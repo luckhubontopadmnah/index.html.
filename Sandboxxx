@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universum Sandbox Avançado - Física, Termodinâmica & Criaturas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            950: '#05070c',
+                            900: '#090d16',
+                            850: '#0d1322',
+                            800: '#111827',
+                            700: '#1f2937',
+                            600: '#374151'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            overscroll-behavior: none;
+        }
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            touch-action: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col">
+
+    <header class="bg-dark-900 border-b border-dark-800 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-lg z-10">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-r from-cyan-500 via-indigo-500 to-rose-500 p-2 rounded-lg text-white font-bold text-xs shadow">
+                🧬 Universum Ultra Lab
+            </div>
+            <div>
+                <h1 class="font-bold text-xs md:text-sm tracking-wide text-slate-200">Sandbox Física & Reações Magnéticas/Químicas</h1>
+                <p class="text-[10px] text-slate-400">FPS: <span id="fps-counter" class="text-green-400 font-mono font-bold">60</span> | Partículas: <span id="particle-counter" class="text-cyan-400 font-mono font-bold">0</span> | Seleção: <span id="selected-indicator" class="text-amber-400 font-mono font-bold">Humano</span></p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button id="btn-heat-view" onclick="toggleHeatView()" class="px-3 py-1 bg-dark-800 hover:bg-dark-700 rounded-lg text-xs font-semibold transition flex items-center gap-1 border border-dark-700">
+                🌡️ <span id="heat-view-text">Visão Térmica: OFF</span>
+            </button>
+            <button id="btn-pause" onclick="togglePause()" class="px-3 py-1 bg-dark-800 hover:bg-dark-700 rounded-lg text-xs font-semibold transition flex items-center gap-1 border border-dark-700">
+                <span id="pause-icon">⏸️</span> <span id="pause-text">Pausar</span>
+            </button>
+            <button onclick="clearGrid()" class="px-3 py-1 bg-rose-600/80 hover:bg-rose-600 text-white rounded-lg text-xs font-semibold transition shadow">
+                🗑️ Limpar
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        <div class="flex-1 bg-dark-950 flex items-center justify-center p-2 relative overflow-hidden">
+            <div class="relative shadow-2xl rounded-xl overflow-hidden border border-dark-800 bg-black touch-none">
+                <canvas id="sandCanvas" class="cursor-crosshair block"></canvas>
+                <div id="tooltip" class="absolute bottom-2 left-2 bg-dark-900/90 backdrop-blur text-[11px] px-2 py-1 rounded border border-dark-700 pointer-events-none text-slate-300 font-mono shadow-md">
+                    Elemento: Vazio | Temp: 20°C
+                </div>
+            </div>
+        </div>
+
+        <aside class="w-full lg:w-84 bg-dark-900 border-t lg:border-t-0 lg:border-l border-dark-800 flex flex-col h-1/2 lg:h-auto shrink-0">
+            <div class="p-3 border-b border-dark-800 space-y-2">
+                <div class="relative">
+                    <input type="text" id="element-search" placeholder="Pesquisar elemento..." oninput="filterElements(this.value)" class="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                </div>
+                <div class="flex items-center justify-between text-xs text-slate-400">
+                    <span>Pincel: <strong id="brush-size-val" class="text-cyan-400">3</strong>px</span>
+                    <input type="range" id="brush-size" min="1" max="15" value="3" oninput="updateBrushSize(this.value)" class="w-32 accent-cyan-500 cursor-pointer">
+                </div>
+            </div>
+
+            <div class="flex overflow-x-auto p-2 bg-dark-850 border-b border-dark-800 space-x-1 shrink-0 scrollbar-none" id="category-tabs">
+                <button onclick="selectCategory('all', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-cyan-600 text-white whitespace-nowrap transition">Todos</button>
+                <button onclick="selectCategory('creatures', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Criaturas & Sangue</button>
+                <button onclick="selectCategory('termo', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Calor / Lava / Frio</button>
+                <button onclick="selectCategory('metals', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Metais & Minerais</button>
+                <button onclick="selectCategory('gems', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Gemas & Cristais</button>
+                <button onclick="selectCategory('liquids', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Líquidos & Químicos</button>
+                <button onclick="selectCategory('gases', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Gases</button>
+                <button onclick="selectCategory('glues', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Colas & Adesivos</button>
+                <button onclick="selectCategory('construction', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Construção</button>
+                <button onclick="selectCategory('plastics', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Plásticos & Polímeros</button>
+                <button onclick="selectCategory('organics', this)" class="cat-btn px-2.5 py-1 rounded text-[11px] font-medium bg-dark-800 hover:bg-dark-700 text-slate-300 whitespace-nowrap transition">Orgânicos & Tecidos</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-1.5 content-start" id="element-list">
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const WIDTH = 180;
+        const HEIGHT = 120;
+        let scale = 4;
+
+        const canvas = document.getElementById('sandCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const maxWidth = container.clientWidth - 16;
+            const maxHeight = container.clientHeight - 16;
+            const scaleX = maxWidth / WIDTH;
+            const scaleY = maxHeight / HEIGHT;
+            scale = Math.max(2, Math.floor(Math.min(scaleX, scaleY)));
+            canvas.style.width = (WIDTH * scale) + 'px';
+            canvas.style.height = (HEIGHT * scale) + 'px';
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const ELEMENTS = {
+            empty: { id: 0, name: 'Borracha / Vazio', color: '#000000', type: 0, cat: 'all', temp: 20 },
+            humano: { id: 1, name: 'Humano', color: '#fca5a5', type: 6, cat: 'creatures', temp: 37 },
+            pato: { id: 2, name: 'Pato', color: '#facc15', type: 6, cat: 'creatures', temp: 40 },
+            sapo: { id: 3, name: 'Sapo', color: '#22c55e', type: 6, cat: 'creatures', temp: 25 },
+            leao: { id: 4, name: 'Leão', color: '#d97706', type: 6, cat: 'creatures', temp: 38 },
+            sangue: { id: 5, name: 'Sangue', color: '#dc2626', type: 9, cat: 'creatures', temp: 37 },
+
+            agua: { id: 6, name: 'Água Doce', color: '#3b82f6', type: 3, cat: 'liquids', temp: 20 },
+            gelo: { id: 7, name: 'Gelo', color: '#93c5fd', type: 8, cat: 'termo', temp: -10 },
+            lava: { id: 8, name: 'Lava', color: '#ef4444', type: 3, cat: 'termo', temp: 1000 },
+            fogo: { id: 9, name: 'Fogo', color: '#f97316', type: 5, cat: 'termo', temp: 500 },
+            nitrogenio_liq: { id: 10, name: 'Nitrogênio Líq.', color: '#a5f3fc', type: 3, cat: 'termo', temp: -196 },
+            helio_liq: { id: 11, name: 'Hélio Líquido', color: '#67e8f9', type: 3, cat: 'termo', temp: -269 },
+            acido: { id: 12, name: 'Ácido Corrosivo', color: '#84cc16', type: 7, cat: 'liquids', temp: 25 },
+
+            ferro: { id: 13, name: 'Ferro', color: '#71717a', type: 1, cat: 'metals', temp: 20 },
+            ouro: { id: 14, name: 'Ouro', color: '#fbbf24', type: 1, cat: 'metals', temp: 20 },
+            prata: { id: 15, name: 'Prata', color: '#e2e8f0', type: 1, cat: 'metals', temp: 20 },
+            cobre: { id: 16, name: 'Cobre', color: '#d97706', type: 1, cat: 'metals', temp: 20 },
+            aluminio: { id: 17, name: 'Alumínio', color: '#cbd5e1', type: 1, cat: 'metals', temp: 20 },
+            zinco: { id: 18, name: 'Zinco', color: '#94a3b8', type: 1, cat: 'metals', temp: 20 },
+            niquel: { id: 19, name: 'Níquel', color: '#64748b', type: 1, cat: 'metals', temp: 20 },
+            cobalto: { id: 20, name: 'Cobalto', color: '#3b82f6', type: 1, cat: 'metals', temp: 20 },
+            titanio: { id: 21, name: 'Titânio', color: '#475569', type: 1, cat: 'metals', temp: 20 },
+            tungstenio: { id: 22, name: 'Tungstênio', color: '#1e293b', type: 1, cat: 'metals', temp: 20 },
+            chumbo: { id: 23, name: 'Chumbo', color: '#334155', type: 1, cat: 'metals', temp: 20 },
+            estanho: { id: 24, name: 'Estanho', color: '#94a3b8', type: 1, cat: 'metals', temp: 20 },
+            mercurio: { id: 25, name: 'Mercúrio', color: '#a1a1aa', type: 3, cat: 'liquids', temp: 20 },
+            cromo: { id: 26, name: 'Cromo', color: '#cbd5e1', type: 1, cat: 'metals', temp: 20 },
+            manganes: { id: 27, name: 'Manganês', color: '#64748b', type: 1, cat: 'metals', temp: 20 },
+            magnesio: { id: 28, name: 'Magnésio', color: '#e2e8f0', type: 1, cat: 'metals', temp: 20 },
+            litio: { id: 29, name: 'Lítio', color: '#f8fafc', type: 1, cat: 'metals', temp: 20 },
+            sodio: { id: 30, name: 'Sódio', color: '#f1f5f9', type: 1, cat: 'metals', temp: 20 },
+            potassio: { id: 31, name: 'Potássio', color: '#e2e8f0', type: 1, cat: 'metals', temp: 20 },
+            calcio: { id: 32, name: 'Cálcio', color: '#cbd5e1', type: 1, cat: 'metals', temp: 20 },
+            platina: { id: 33, name: 'Platina', color: '#f8fafc', type: 1, cat: 'metals', temp: 20 },
+            uranio: { id: 34, name: 'Urânio', color: '#10b981', type: 1, cat: 'metals', temp: 80 },
+
+            quartzo: { id: 35, name: 'Quartzo', color: '#e2e8f0', type: 1, cat: 'gems', temp: 20 },
+            ametista: { id: 36, name: 'Ametista', color: '#c084fc', type: 1, cat: 'gems', temp: 20 },
+            citrino: { id: 37, name: 'Citrino', color: '#fde047', type: 1, cat: 'gems', temp: 20 },
+            esmeralda: { id: 38, name: 'Esmeralda', color: '#34d399', type: 1, cat: 'gems', temp: 20 },
+            rubi: { id: 39, name: 'Rubi', color: '#f43f5e', type: 1, cat: 'gems', temp: 20 },
+            safira: { id: 40, name: 'Safira', color: '#60a5fa', type: 1, cat: 'gems', temp: 20 },
+            diamante: { id: 41, name: 'Diamante', color: '#ffffff', type: 1, cat: 'gems', temp: 20 },
+            obsidiana: { id: 42, name: 'Obsidiana', color: '#18181b', type: 1, cat: 'gems', temp: 20 },
+
+            cola_branca: { id: 43, name: 'Cola Branca', color: '#f8fafc', type: 10, cat: 'glues', temp: 20 },
+            cola_instantanea: { id: 44, name: 'Cola Instantânea', color: '#94a3b8', type: 10, cat: 'glues', temp: 20 },
+            cola_quente: { id: 45, name: 'Cola Quente', color: '#fb923c', type: 10, cat: 'glues', temp: 60 },
+            cola_epoxi: { id: 46, name: 'Cola Epóxi', color: '#e2e8f0', type: 10, cat: 'glues', temp: 25 },
+            fita_adesiva: { id: 47, name: 'Fita Adesiva', color: '#fef08a', type: 1, cat: 'glues', temp: 20 },
+
+            cimento: { id: 48, name: 'Cimento', color: '#71717a', type: 2, cat: 'construction', temp: 20 },
+            concreto: { id: 49, name: 'Concreto', color: '#52525b', type: 1, cat: 'construction', temp: 20 },
+            tijolo: { id: 50, name: 'Tijolo', color: '#b91c1c', type: 1, cat: 'construction', temp: 20 },
+            vidro: { id: 51, name: 'Vidro Temperado', color: '#bae6fd', type: 1, cat: 'construction', temp: 20 },
+            areia: { id: 52, name: 'Areia', color: '#fde047', type: 2, cat: 'construction', temp: 20 },
+            brita: { id: 53, name: 'Brita', color: '#3f3f46', type: 2, cat: 'construction', temp: 20 },
+            gesso: { id: 54, name: 'Gesso', color: '#f4f4f5', type: 2, cat: 'construction', temp: 20 },
+            aco_estrutural: { id: 55, name: 'Aço Estrutural', color: '#3f3f46', type: 1, cat: 'construction', temp: 20 },
+
+            etanol: { id: 56, name: 'Etanol', color: '#f43f5e', type: 3, cat: 'liquids', temp: 20 },
+            gasolina: { id: 57, name: 'Gasolina', color: '#fbbf24', type: 3, cat: 'liquids', temp: 20 },
+            oleo_vegetal: { id: 58, name: 'Óleo Vegetal', color: '#facc15', type: 3, cat: 'liquids', temp: 20 },
+            petroleo: { id: 59, name: 'Petróleo', color: '#18181b', type: 3, cat: 'liquids', temp: 20 },
+            mel: { id: 60, name: 'Mel', color: '#d97706', type: 3, cat: 'liquids', temp: 20 },
+            leite: { id: 61, name: 'Leite', color: '#ffffff', type: 3, cat: 'liquids', temp: 10 },
+
+            oxigenio: { id: 62, name: 'Oxigênio', color: '#38bdf8', type: 4, cat: 'gases', temp: 20 },
+            hidrogenio: { id: 63, name: 'Hidrogênio', color: '#f43f5e', type: 4, cat: 'gases', temp: 20 },
+            vapor: { id: 64, name: 'Vapor de Água', color: '#e0f2fe', type: 4, cat: 'gases', temp: 110 },
+            dioxido_carbono: { id: 65, name: 'Diox. Carbono', color: '#a1a1aa', type: 4, cat: 'gases', temp: 20 },
+            metano: { id: 66, name: 'Metano', color: '#a7f3d0', type: 4, cat: 'gases', temp: 20 },
+
+            polietileno: { id: 67, name: 'Polietileno', color: '#60a5fa', type: 1, cat: 'plastics', temp: 20 },
+            pvc: { id: 68, name: 'PVC', color: '#93c5fd', type: 1, cat: 'plastics', temp: 20 },
+            teflon: { id: 69, name: 'Teflon', color: '#e2e8f0', type: 1, cat: 'plastics', temp: 20 },
+            nylon: { id: 70, name: 'Nylon', color: '#fde047', type: 1, cat: 'plastics', temp: 20 },
+
+            madeira: { id: 71, name: 'Madeira', color: '#78350f', type: 1, cat: 'organics', temp: 20 },
+            carvao: { id: 72, name: 'Carvão', color: '#27272a', type: 2, cat: 'organics', temp: 20 },
+            algodao: { id: 73, name: 'Algodão', color: '#fafafa', type: 2, cat: 'organics', temp: 20 },
+            borracha: { id: 74, name: 'Borracha Natural', color: '#52525b', type: 1, cat: 'organics', temp: 20 }
+        };
+
+        const TYPE_MAP = new Uint8Array(256);
+        const COLOR_CACHE = new Uint32Array(256);
+
+        (function prepareCaches() {
+            for (const el of Object.values(ELEMENTS)) {
+                const hex = el.color;
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                COLOR_CACHE[el.id] = (255 << 24) | (b << 16) | (g << 8) | r;
+                TYPE_MAP[el.id] = el.type;
+            }
+            COLOR_CACHE[0] = (255 << 24) | (7 << 16) | (5 << 8) | 5;
+        })();
+
+        const grid = new Uint8Array(WIDTH * HEIGHT);
+        const tempGrid = new Float32Array(WIDTH * HEIGHT);
+        const hpGrid = new Uint8Array(WIDTH * HEIGHT);
+        const updatedFlags = new Uint8Array(WIDTH * HEIGHT);
+
+        tempGrid.fill(20);
+        hpGrid.fill(100);
+
+        let currentElementKey = 'humano';
+        let brushSize = 3;
+        let isPaused = false;
+        let currentCategory = 'all';
+        let heatViewActive = false;
+
+        function populateElementList(filter = '') {
+            const listEl = document.getElementById('element-list');
+            listEl.innerHTML = '';
+
+            for (const [key, el] of Object.entries(ELEMENTS)) {
+                if (key === 'empty') continue;
+                if (currentCategory !== 'all' && el.cat !== currentCategory) continue;
+                if (filter && !el.name.toLowerCase().includes(filter.toLowerCase())) continue;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `flex items-center space-x-2 p-1.5 rounded-md bg-dark-950 hover:bg-dark-800 border text-left transition ${currentElementKey === key ? 'border-cyan-500 ring-1 ring-cyan-500 bg-dark-800' : 'border-dark-800'}`;
+
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    selectElement(key);
+                };
+
+                const colorBox = document.createElement('div');
+                colorBox.className = 'w-3.5 h-3.5 rounded shrink-0 shadow-sm border border-white/10 pointer-events-none';
+                colorBox.style.backgroundColor = el.color;
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'text-[11px] text-slate-200 truncate font-medium pointer-events-none';
+                nameSpan.innerText = el.name;
+
+                btn.appendChild(colorBox);
+                btn.appendChild(nameSpan);
+                listEl.appendChild(btn);
+            }
+        }
+
+        function selectElement(key) {
+            currentElementKey = key;
+            const el = ELEMENTS[key];
+            if (el) document.getElementById('selected-indicator').innerText = el.name;
+            populateElementList(document.getElementById('element-search').value);
+        }
+
+        function selectCategory(cat, btnElem) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(b => {
+                b.classList.remove('bg-cyan-600', 'text-white');
+                b.classList.add('bg-dark-800', 'text-slate-300');
+            });
+
+            if (btnElem) {
+                btnElem.classList.remove('bg-dark-800', 'text-slate-300');
+                btnElem.classList.add('bg-cyan-600', 'text-white');
+            }
+
+            populateElementList(document.getElementById('element-search').value);
+        }
+
+        function filterElements(val) {
+            populateElementList(val);
+        }
+
+        function updateBrushSize(val) {
+            brushSize = parseInt(val);
+            document.getElementById('brush-size-val').innerText = brushSize;
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pause-icon').innerText = isPaused ? '▶️' : '⏸️';
+            document.getElementById('pause-text').innerText = isPaused ? 'Continuar' : 'Pausar';
+        }
+
+        function toggleHeatView() {
+            heatViewActive = !heatViewActive;
+            document.getElementById('btn-heat-view').className = heatViewActive
+                ? 'px-3 py-1 bg-amber-600 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 border border-amber-500 shadow'
+                : 'px-3 py-1 bg-dark-800 hover:bg-dark-700 rounded-lg text-xs font-semibold transition flex items-center gap-1 border border-dark-700';
+
+            document.getElementById('heat-view-text').innerText = heatViewActive ? 'Visão Térmica: ON' : 'Visão Térmica: OFF';
+            document.getElementById('selected-indicator').innerText = heatViewActive ? 'Termografia' : ELEMENTS[currentElementKey].name;
+        }
+
+        function clearGrid() {
+            grid.fill(0);
+            tempGrid.fill(20);
+            hpGrid.fill(100);
+        }
+
+        let isDrawing = false;
+
+        function getCanvasCoords(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((clientX - rect.left) / (rect.width / WIDTH));
+            const y = Math.floor((clientY - rect.top) / (rect.height / HEIGHT));
+            return { x, y };
+        }
+
+        function paintBrush(cx, cy) {
+            if (cx < 0 || cx >= WIDTH || cy < 0 || cy >= HEIGHT) return;
+
+            const elObj = ELEMENTS[currentElementKey];
+            if (!elObj) return;
+
+            const r2 = brushSize * brushSize;
+
+            for (let dy = -brushSize; dy <= brushSize; dy++) {
+                for (let dx = -brushSize; dx <= brushSize; dx++) {
+                    if (dx * dx + dy * dy <= r2) {
+                        const nx = cx + dx;
+                        const ny = cy + dy;
+
+                        if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                            const idx = ny * WIDTH + nx;
+                            grid[idx] = elObj.id;
+                            tempGrid[idx] = elObj.temp !== undefined ? elObj.temp : 20;
+                            if (elObj.type === 6) hpGrid[idx] = 100;
+                        }
+                    }
+                }
+            }
+        }
+
+        function handlePointerDown(e) {
+            isDrawing = true;
+            const x = e.clientX ?? e.touches?.[0]?.clientX;
+            const y = e.clientY ?? e.touches?.[0]?.clientY;
+            if (x == null || y == null) return;
+
+            const coords = getCanvasCoords(x, y);
+            paintBrush(coords.x, coords.y);
+            updateTooltip(e);
+        }
+
+        function handlePointerMove(e) {
+            const x = e.clientX ?? e.touches?.[0]?.clientX;
+            const y = e.clientY ?? e.touches?.[0]?.clientY;
+            if (x == null || y == null) return;
+
+            const coords = getCanvasCoords(x, y);
+            if (isDrawing) paintBrush(coords.x, coords.y);
+            updateTooltip(e);
+        }
+
+        function handlePointerUp() {
+            isDrawing = false;
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+
+        canvas.addEventListener('touchstart', (e) => {
+            handlePointerDown(e);
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            handlePointerMove(e);
+            e.preventDefault();
+        }, { passive: false });
+
+        window.addEventListener('touchend', handlePointerUp);
+
+        function updateTooltip(e) {
+            const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+            const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+            if (clientX == null || clientY == null) return;
+
+            const coords = getCanvasCoords(clientX, clientY);
+
+            if (coords.x >= 0 && coords.x < WIDTH && coords.y >= 0 && coords.y < HEIGHT) {
+                const idx = coords.y * WIDTH + coords.x;
+                const id = grid[idx];
+                let name = 'Vazio';
+
+                for (const el of Object.values(ELEMENTS)) {
+                    if (el.id === id) {
+                        name = el.name;
+                        break;
+                    }
+                }
+
+                const temp = Math.round(tempGrid[idx]);
+                document.getElementById('tooltip').innerText =
+                    `Elemento: ${name} | Temp: ${temp}°C (${coords.x}, ${coords.y})`;
+            }
+        }
+
+        function updateSimulation() {
+            updatedFlags.fill(0);
+            let particleCount = 0;
+
+            for (let y = 0; y < HEIGHT; y++) {
+                for (let x = 0; x < WIDTH; x++) {
+                    const idx = y * WIDTH + x;
+                    const id = grid[idx];
+
+                    if (id === 0) continue;
+
+                    particleCount++;
+                    let t = tempGrid[idx];
+
+                    if (id === 9) t = 500;
+                    else if (id === 8) t = 1000;
+                    else if (id === 7) t = -10;
+                    else if (id === 10) t = -196;
+
+                    if (x > 0) t += (tempGrid[idx - 1] - t) * 0.04;
+                    if (x < WIDTH - 1) t += (tempGrid[idx + 1] - t) * 0.04;
+                    if (y > 0) t += (tempGrid[idx - WIDTH] - t) * 0.04;
+                    if (y < HEIGHT - 1) t += (tempGrid[idx + WIDTH] - t) * 0.04;
+
+                    if (id === 6 && t <= 0) grid[idx] = 7;
+                    else if (id === 7 && t >= 0) grid[idx] = 6;
+                    else if (id === 6 && t >= 100) grid[idx] = 64;
+                    else if (id === 71 && t >= 300) grid[idx] = 9;
+
+                    tempGrid[idx] = t;
+                }
+            }
+
+            for (let y = HEIGHT - 1; y >= 0; y--) {
+                const leftToRight = (y % 2 === 0);
+
+                for (let i = 0; i < WIDTH; i++) {
+                    const x = leftToRight ? i : (WIDTH - 1 - i);
+                    const idx = y * WIDTH + x;
+                    const id = grid[idx];
+
+                    if (id === 0 || updatedFlags[idx]) continue;
+
+                    const type = TYPE_MAP[id];
+
+                    if (type === 7) {
+                        const neighbors = [
+                            y > 0 ? idx - WIDTH : -1,
+                            y < HEIGHT - 1 ? idx + WIDTH : -1,
+                            x > 0 ? idx - 1 : -1,
+                            x < WIDTH - 1 ? idx + 1 : -1
+                        ];
+
+                        let dissolved = false;
+
+                        for (const nIdx of neighbors) {
+                            if (nIdx !== -1 && grid[nIdx] !== 0 && grid[nIdx] !== 7 && grid[nIdx] !== 51) {
+                                grid[nIdx] = 0;
+                                dissolved = true;
+                                break;
+                            }
+                        }
+
+                        const below = y + 1 < HEIGHT ? idx + WIDTH : -1;
+
+                        if (below !== -1 && grid[below] === 0) {
+                            grid[below] = id;
+                            tempGrid[below] = tempGrid[idx];
+                            grid[idx] = 0;
+                            updatedFlags[below] = 1;
+                        } else if (dissolved) {
+                            grid[idx] = 0;
+                        }
+                    } else if (type === 2) {
+                        const below = y + 1 < HEIGHT ? idx + WIDTH : -1;
+
+                        if (below !== -1 && (grid[below] === 0 || TYPE_MAP[grid[below]] === 3)) {
+                            const target = grid[below];
+                            grid[below] = id;
+                            tempGrid[below] = tempGrid[idx];
+                            grid[idx] = target;
+                            updatedFlags[below] = 1;
+                        } else {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            const diag = (y + 1 < HEIGHT && x + dir >= 0 && x + dir < WIDTH)
+                                ? idx + WIDTH + dir
+                                : -1;
+
+                            if (diag !== -1 && grid[diag] === 0) {
+                                grid[diag] = id;
+                                tempGrid[diag] = tempGrid[idx];
+                                grid[idx] = 0;
+                                updatedFlags[diag] = 1;
+                            }
+                        }
+                    } else if (type === 3 || type === 9) {
+                        const below = y + 1 < HEIGHT ? idx + WIDTH : -1;
+
+                        if (below !== -1 && grid[below] === 0) {
+                            grid[below] = id;
+                            tempGrid[below] = tempGrid[idx];
+                            hpGrid[below] = hpGrid[idx];
+                            grid[idx] = 0;
+                            updatedFlags[below] = 1;
+                        } else {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            const side = (x + dir >= 0 && x + dir < WIDTH) ? idx + dir : -1;
+
+                            if (side !== -1 && grid[side] === 0) {
+                                grid[side] = id;
+                                tempGrid[side] = tempGrid[idx];
+                                hpGrid[side] = hpGrid[idx];
+                                grid[idx] = 0;
+                                updatedFlags[side] = 1;
+                            }
+                        }
+                    } else if (type === 4) {
+                        const above = y > 0 ? idx - WIDTH : -1;
+
+                        if (above !== -1 && grid[above] === 0) {
+                            grid[above] = id;
+                            tempGrid[above] = tempGrid[idx];
+                            grid[idx] = 0;
+                            updatedFlags[above] = 1;
+                        }
+                    } else if (type === 5) {
+                        const above = y > 0 ? idx - WIDTH : -1;
+
+                        if (above !== -1 && grid[above] === 0) {
+                            grid[above] = id;
+                            tempGrid[above] = 500;
+                            grid[idx] = 0;
+                            updatedFlags[above] = 1;
+                        } else if (Math.random() < 0.3) {
+                            grid[idx] = 0;
+                        }
+                    } else if (type === 6) {
+                        const below = y + 1 < HEIGHT ? idx + WIDTH : -1;
+                        const hasGround = below !== -1 && grid[below] !== 0 && TYPE_MAP[grid[below]] !== 4;
+                        const neighbors = [
+                            y > 0 ? idx - WIDTH : -1,
+                            y < HEIGHT - 1 ? idx + WIDTH : -1,
+                            x > 0 ? idx - 1 : -1,
+                            x < WIDTH - 1 ? idx + 1 : -1
+                        ];
+
+                        let hp = hpGrid[idx];
+
+                        for (const nIdx of neighbors) {
+                            if (nIdx !== -1 && (grid[nIdx] === 8 || grid[nIdx] === 9 || grid[nIdx] === 12 || tempGrid[nIdx] > 70)) {
+                                hp -= 8;
+
+                                const bloodTarget = y < HEIGHT - 1 ? idx + WIDTH : -1;
+
+                                if (bloodTarget !== -1 && grid[bloodTarget] === 0) {
+                                    grid[bloodTarget] = 5;
+                                    tempGrid[bloodTarget] = 37;
+                                }
+                            }
+                        }
+
+                        hpGrid[idx] = hp;
+
+                        if (hp <= 0) {
+                            grid[idx] = 5;
+                            continue;
+                        }
+
+                        if (!hasGround) {
+                            if (below !== -1 && grid[below] === 0) {
+                                grid[below] = id;
+                                tempGrid[below] = tempGrid[idx];
+                                hpGrid[below] = hp;
+                                grid[idx] = 0;
+                                updatedFlags[below] = 1;
+                            }
+                        } else {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            const side = (x + dir >= 0 && x + dir < WIDTH) ? idx + dir : -1;
+
+                            if (side !== -1 && grid[side] === 0 && Math.random() < 0.5) {
+                                grid[side] = id;
+                                tempGrid[side] = tempGrid[idx];
+                                hpGrid[side] = hp;
+                                grid[idx] = 0;
+                                updatedFlags[side] = 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('particle-counter').innerText = particleCount;
+        }
+
+        const imgData = ctx.createImageData(WIDTH, HEIGHT);
+        const buf = new Uint32Array(imgData.data.buffer);
+
+        function render() {
+            for (let i = 0; i < grid.length; i++) {
+                const id = grid[i];
+
+                if (heatViewActive) {
+                    const temp = tempGrid[i];
+                    let r = 0, g = 0, b = 255;
+
+                    if (temp <= 0) {
+                        r = 0; g = 150; b = 255;
+                    } else if (temp < 60) {
+                        const factor = temp / 60;
+                        r = Math.floor(factor * 255);
+                        g = Math.floor(255 * (1 - factor));
+                        b = 100;
+                    } else if (temp < 300) {
+                        r = 255; g = 255; b = 0;
+                    } else {
+                        r = 255;
+                        g = Math.max(0, 255 - Math.floor((temp - 300) / 4));
+                        b = 0;
+                    }
+
+                    buf[i] = (255 << 24) | (b << 16) | (g << 8) | r;
+                } else {
+                    buf[i] = COLOR_CACHE[id];
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        let lastTime = performance.now();
+        let frameCount = 0;
+
+        function mainLoop(now) {
+            frameCount++;
+
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps-counter').innerText = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+
+            if (!isPaused) updateSimulation();
+
+            render();
+            requestAnimationFrame(mainLoop);
+        }
+
+        populateElementList();
+        requestAnimationFrame(mainLoop);
+    </script>
+</body>
+</html>
