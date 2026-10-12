@@ -1,0 +1,274 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PudimX Library</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background:
+        radial-gradient(circle at 20% 10%, #432078 0, transparent 35%),
+        radial-gradient(circle at 80% 80%, #26134c 0, transparent 40%),
+        #090611;
+    color: white;
+    min-height: 100vh;
+}
+
+header {
+    padding: 22px 7%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #382452;
+    background: #0c0716cc;
+}
+
+.logo {
+    color: #ff303f;
+    font-size: 26px;
+    font-weight: 900;
+}
+
+header span {
+    color: #bba2ff;
+    font-size: 13px;
+}
+
+main {
+    width: min(900px, 92%);
+    margin: 55px auto;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.hero h1 {
+    font-size: clamp(32px, 7vw, 52px);
+    margin-bottom: 12px;
+}
+
+.hero h1 b {
+    color: #ff3048;
+}
+
+.hero p {
+    color: #b8abc9;
+    line-height: 1.6;
+}
+
+.search {
+    width: 100%;
+    margin: 25px 0;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #543779;
+    background: #130d20;
+    color: white;
+    outline: none;
+}
+
+.card {
+    background: #120d1c;
+    border: 1px solid #38264e;
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 22px;
+    box-shadow: 0 0 30px #5c27a010;
+}
+
+.card h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
+}
+
+.description {
+    color: #b8abc9;
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+pre {
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: #08060d;
+    border: 1px solid #30213e;
+    border-radius: 10px;
+    padding: 16px;
+    color: #d6c4ff;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+button {
+    border: 0;
+    padding: 12px 17px;
+    border-radius: 9px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.copy {
+    background: #ff3048;
+    color: white;
+}
+
+.copy:hover {
+    background: #d91e35;
+}
+
+footer {
+    text-align: center;
+    padding: 30px;
+    color: #857995;
+    border-top: 1px solid #382452;
+    font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">PudimX</div>
+    <span>LIBRARY • V1.0</span>
+</header>
+
+<main>
+    <section class="hero">
+        <h1>Biblioteca <b>PudimX</b></h1>
+        <p>Seus códigos, sua interface, suas criações.</p>
+        <p>Encontre e copie os códigos disponíveis na biblioteca.</p>
+    </section>
+
+    <input
+        id="search"
+        class="search"
+        type="search"
+        placeholder="Pesquisar scripts..."
+        oninput="searchScripts()"
+    >
+
+    <section class="card script-card">
+        <h2>PudimX Core</h2>
+        <p class="description">
+            Estrutura inicial da biblioteca em Lua.
+        </p>
+
+        <pre id="code1">local PudimX = {}
+
+PudimX.Version = "1.0.0"
+PudimX.Name = "PudimX"
+
+function PudimX.Info()
+    return {
+        Name = PudimX.Name,
+        Version = PudimX.Version
+    }
+end
+
+function PudimX.Greet()
+    print("PudimX carregada!")
+end
+
+return PudimX</pre>
+
+        <button class="copy" onclick="copyCode('code1', this)">
+            Copiar código
+        </button>
+    </section>
+
+    <section class="card script-card">
+        <h2>Exemplo de uso</h2>
+        <p class="description">
+            Exemplo para usar a biblioteca em um projeto próprio no Roblox Studio.
+        </p>
+
+        <pre id="code2">local PudimX = require(
+    game.ReplicatedStorage:WaitForChild("PudimX")
+)
+
+print(PudimX.Info().Name)
+PudimX.Greet()</pre>
+
+        <button class="copy" onclick="copyCode('code2', this)">
+            Copiar código
+        </button>
+    </section>
+
+    <p id="empty" style="display:none;text-align:center;color:#b8abc9">
+        Nenhum script encontrado.
+    </p>
+</main>
+
+<footer>
+    PudimX Library © 2026 • Criado pela Pudim Studios
+</footer>
+
+<script>
+function copyCode(id, button) {
+    const code = document.getElementById(id).innerText;
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(code).then(() => {
+            button.textContent = "Copiado!";
+            setTimeout(() => {
+                button.textContent = "Copiar código";
+            }, 1500);
+        }).catch(() => fallbackCopy(code, button));
+    } else {
+        fallbackCopy(code, button);
+    }
+}
+
+function fallbackCopy(code, button) {
+    const area = document.createElement("textarea");
+    area.value = code;
+    document.body.appendChild(area);
+    area.select();
+
+    try {
+        document.execCommand("copy");
+        button.textContent = "Copiado!";
+    } catch {
+        button.textContent = "Não foi possível copiar";
+    }
+
+    area.remove();
+
+    setTimeout(() => {
+        button.textContent = "Copiar código";
+    }, 1500);
+}
+
+function searchScripts() {
+    const query = document.getElementById("search").value
+        .toLowerCase();
+
+    let visible = 0;
+
+    document.querySelectorAll(".script-card").forEach(card => {
+        const match = card.innerText.toLowerCase().includes(query);
+        card.style.display = match ? "block" : "none";
+        if (match) visible++;
+    });
+
+    document.getElementById("empty").style.display =
+        visible ? "none" : "block";
+}
+</script>
+
+</body>
+</html>
